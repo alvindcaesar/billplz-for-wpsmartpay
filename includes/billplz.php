@@ -1,6 +1,8 @@
 <?php
 
+use SmartPay\Models\Form;
 use SmartPay\Models\Payment;
+use SmartPay\Models\Product;
 
 if (!defined('ABSPATH')) {
   die;
@@ -28,7 +30,11 @@ function bwpsp_setting_link($links)
  */
 function bwpsp_billplz_url()
 {
-  $url = apply_filters('bwpsp_get_billplz_url', 'https://billplz.com');
+  if (smartpay_is_test_mode()) {
+    $url = 'https://billplz-sandbox.com';
+  } else {
+    $url = 'https://billplz.com';
+  }
   return $url;
 }
 
@@ -111,9 +117,47 @@ function bwpsp_gateway_settings(array $settings): array
       'type'  => 'text',
     ),
 
+    array(
+      'id' => 'billplz_sandbox_settings',
+      'name' => '<h4 class="text-uppercase text-info my-1">' . __('Billplz Sandbox Settings', 'fpx-payment-smartpay') . '</h4>',
+      'desc' => __('Configure your Billplz Sandbox Settings', 'fpx-payment-smartpay'),
+      'type' => 'header'
+    ),
+
+    array(
+      'id'   => 'billplz_sandbox_secret_key',
+      'name'  => __('Sandbox Secret Key', 'fpx-payment-smartpay'),
+      'desc'  => __('Enter your sandbox secret key', 'fpx-payment-smartpay'),
+      'type'  => 'text',
+    ),
+
+    array(
+      'id'   => 'billplz_sandbox_collection_id',
+      'name'  => __('Sandbox Collection ID', 'fpx-payment-smartpay'),
+      'desc'  => __('Enter your sandbox Collection ID', 'fpx-payment-smartpay'),
+      'type'  => 'text',
+    ),
+
+    array(
+      'id'   => 'billplz_sandbox_xsignature_key',
+      'name'  => __('Sandbox X-Signature Key', 'fpx-payment-smartpay'),
+      'desc'  => __('Enter your Sandbox X-Signature key', 'fpx-payment-smartpay'),
+      'type'  => 'text',
+    ),
   );
 
   return array_merge($settings, ['billplz' => $gateway_settings]);
+}
+
+function bwpsp_test_mode_warning()
+{
+  if (smartpay_is_test_mode() && smartpay_is_gateway_active('billplz')) {
+    echo __(sprintf(
+      '<div class="notice notice-warning">
+            <p><strong>WPSmartPay: You are using Billplz for WPSmartPay in Test Mode. </strong> Make sure to switch to <a href="' . get_admin_url() . 'admin.php?page=smartpay-setting&tab=gateways">Live Mode</a> when you\'re ready to accept real payments.</p>
+        </div>',
+    ), 'billplz-for-smartpay');
+  }
 }
 
 /**
@@ -132,12 +176,22 @@ function bwpsp_ajax_process_payment($paymentData)
     die('Can\'t insert payment.');
   }
 
+  if (Payment::FORM_PAYMENT === $paymentData['payment_type']) {
+    $form         = Form::where('id', $payment->data['form_id'])->first();
+    $productTitle = strtoupper($form->title);
+  }
+
+  if (Payment::PRODUCT_PURCHASE === $paymentData['payment_type']) {
+    $product      = Product::where('id', $payment->data['product_id'])->first();
+    $productTitle = strtoupper($product->title);
+  }
+  
   $payment_price = number_format($paymentData['amount'], 2);
 
-  $return_url   = add_query_arg( array(
+  $return_url   = add_query_arg(array(
     'payment-id' => $payment->id,
     'smartpay-payment' => $payment->uuid
-  ),smartpay_get_payment_success_page_uri());
+  ), smartpay_get_payment_success_page_uri());
 
   $callback_url = site_url('wp-json/billplz-smartpay/v1/bwpsp-callback');
 
@@ -147,19 +201,19 @@ function bwpsp_ajax_process_payment($paymentData)
     ),
     'body' => array(
       'collection_id' => $smartpay_options['billplz_collection_id'],
-      'email'         => $paymentData['email'],
-      'name'          => $paymentData['customer']['first_name'] . ' ' . $paymentData['customer']['last_name'],
+      'email'         => $payment->customer->email,
+      'name'          => $payment->customer->full_name,
       'amount'        => strval($payment_price) * 100,
       'redirect_url'  => $return_url,
       'callback_url'  => $callback_url,
-      'description'   => 'Payment ID #' . $payment->id,
+      'description'   => 'Payment for' . $productTitle,
       'reference_1_label' => 'Payment ID',
       'reference_1' => $payment->id
     )
   );
   $response    = wp_remote_post(bwpsp_billplz_url() . '/api/v3/bills', $args);
 
-  if ( is_wp_error( $response ) ) {
+  if (is_wp_error($response)) {
     $error_message = $response->get_error_message();
     echo "Something went wrong: $error_message";
     die();
@@ -257,45 +311,44 @@ function bwpsp_process_payment_url()
   $x_signature = $smartpay_options['billplz_xsignature_key'];
   $url         = htmlentities($_SERVER['QUERY_STRING']);
   parse_str(html_entity_decode($url), $query);
-  
-  if ( empty($query['smartpay-payment']) && empty($query['payment-id']) && empty($query['billplz']['x_signature']) && empty($query['billplz']['id']) && empty($query['billplz']['paid']) && empty($query['billplz']['paid_at']) && empty($query['billplz']['id'])) {
+
+  if (empty($query['smartpay-payment']) && empty($query['payment-id']) && empty($query['billplz']['x_signature']) && empty($query['billplz']['id']) && empty($query['billplz']['paid']) && empty($query['billplz']['paid_at']) && empty($query['billplz']['id'])) {
     return;
   } else {
 
     ksort($query);
-  
+
     $payment_id     = $query['payment-id'];
     $x_sign         = $query['billplz']['x_signature'];
     $transaction_id = $query['billplz']['id'];
-  
+
     unset($query['billplz']['x_signature']);
     unset($query['payment-id']);
     unset($query['smartpay-payment']);
-  
+
     $a = array();
     foreach ($query as $key => $value) {
       foreach ($value as $sub_key => $sub_val) {
         array_push($a, ($key . $sub_key . $sub_val));
       }
     }
-  
+
     sort($a);
-  
+
     $new     = implode("|", $a);
-  
+
     $hash    = hash_hmac('sha256', $new, $x_signature);
-  
+
     $payment = Payment::find($payment_id);
-  
+
     if (isset($_GET['payment-id']) && ($hash == $x_sign) && ('true' == $query['billplz']['paid']) && ('completed' != $payment->status)) {
-      $payment->updateStatus( 'completed' );
+      $payment->updateStatus('completed');
       $payment->setTransactionId($transaction_id);
     } else {
       wp_redirect(smartpay_get_payment_failure_page_uri());
       die;
     }
   }
-
 }
 
 /** Register all actions and filters */
@@ -304,6 +357,7 @@ add_filter('smartpay_gateways', 'bwpsp_register_gateway', 110);
 add_filter('smartpay_get_available_payment_gateways', 'bwpsp_register_to_available_gateway_on_setting', 111);
 add_filter('smartpay_settings_sections_gateways', 'bwpsp_gateway_section', 110);
 add_filter('smartpay_settings_gateways', 'bwpsp_gateway_settings', 110);
+add_action('admin_notices', 'bwpsp_test_mode_warning');
 add_action('smartpay_billplz_ajax_process_payment', 'bwpsp_ajax_process_payment');
 add_action('rest_api_init', 'bwpsp_callback_url_endpoint');
 add_action('init', 'bwpsp_process_payment_url');
