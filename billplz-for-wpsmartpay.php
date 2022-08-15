@@ -6,12 +6,12 @@
  * @package           Billplz_for_WPSmartPay
  *
  * @wordpress-plugin
- * Plugin Name:       Billplz for WPSmartPay
- * Plugin URI:        https://alvindcaesar.com/
+ * Plugin Name:       FPX Payment for WPSmartPay (Billplz)
+ * Plugin URI:        https://wpkartel.com/fpx-payment-for-wpsmartpay
  * Description:       Accept payment in WPSmartPay by using Billplz.
- * Version:           1.0.2
- * Author:            Alvind Caesar
- * Author URI:        https://alvindcaesar.com/
+ * Version:           1.0.3
+ * Author:            Alvind Caesar (WPKartel)
+ * Author URI:        https://wpkartel.com/
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       billplz-for-smartpay
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 
 if (!function_exists('is_plugin_active')) {
   include_once(ABSPATH . 'wp-admin/includes/plugin.php');
-  if (!is_plugin_active('smartpay/smartpay.php')) {
+  if (! is_plugin_active('smartpay/smartpay.php') || ( is_plugin_active('fpx-payment-smartpay/fpx-payment-smartpay.php'))) {
     return;
   }
 }
@@ -60,11 +60,7 @@ if (!class_exists('BillplzWPSP')) {
   }
 }
 
-/**
- * Run the instance of the class
- *
- * @return void
- */
+
 function Billplz_WPSP_Run()
 {
   return Billplz_WPSP::instance();
