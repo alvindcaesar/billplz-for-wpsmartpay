@@ -18,17 +18,17 @@ function bwpsp_setting_link($links)
 {
   $mylinks = array(
     '<a href="' . admin_url('admin.php?page=smartpay-setting&tab=gateways') . '">Settings</a>',
+    '<a style="color: green" href="' . 'https://wpkartel.com/fpx-payment-for-wpsmartpay' . '" target="_blank" >Upgrade to Pro</a>',
   );
   return array_merge($links, $mylinks);
 }
-
 
 /**
  * Retrieve Billplz URL helper function
  *
  * @return void
  */
-function bwpsp_billplz_url()
+function bwpsp_get_billplz_url()
 {
   if (smartpay_is_test_mode()) {
     $url = 'https://billplz-sandbox.com';
@@ -36,6 +36,36 @@ function bwpsp_billplz_url()
     $url = 'https://billplz.com';
   }
   return $url;
+}
+
+function bwpsp_get_billplz_secret_key()
+{
+  if (smartpay_is_test_mode()) {
+    $secret_key = base64_encode(smartpay_get_option('billplz_sandbox_secret_key'));
+  } else {
+    $secret_key = base64_encode(smartpay_get_option('billplz_secret_key'));
+  }
+  return $secret_key;
+}
+
+function bwpsp_get_billplz_collection_id()
+{
+  if (smartpay_is_test_mode()) {
+    $collection_id = smartpay_get_option('billplz_sandbox_collection_id');
+  } else {
+    $collection_id = smartpay_get_option('billplz_collection_id');
+  }
+  return $collection_id;
+}
+
+function bwpsp_get_billplz_xsignature_key()
+{
+  if (smartpay_is_test_mode()) {
+    $xsignature_key = smartpay_get_option('billplz_sandbox_xsignature_key');
+  } else {
+    $xsignature_key = smartpay_get_option('billplz_xsignature_key');
+  }
+  return $xsignature_key;
 }
 
 /**
@@ -69,14 +99,16 @@ function bwpsp_register_to_available_gateway_on_setting(array $availableGateways
 }
 
 /**
- * Register Billplz section setiing tab
+ * Register Billplz section setting tab
  *
  * @param array $sections
  * @return array
  */
 function bwpsp_gateway_section(array $sections = array()): array
 {
-  $sections['billplz'] = __('Billplz', 'billplz-for-smartpay');
+  if(smartpay_is_gateway_active('billplz')){
+    $sections['billplz'] = __('Billplz', 'billplz-for-smartpay');
+  }
   return $sections;
 }
 
@@ -119,29 +151,29 @@ function bwpsp_gateway_settings(array $settings): array
 
     array(
       'id' => 'billplz_sandbox_settings',
-      'name' => '<h4 class="text-uppercase text-info my-1">' . __('Billplz Sandbox Settings', 'fpx-payment-smartpay') . '</h4>',
-      'desc' => __('Configure your Billplz Sandbox Settings', 'fpx-payment-smartpay'),
+      'name' => '<h4 class="text-uppercase text-info my-1">' . __('Billplz Sandbox Settings', 'billplz-for-smartpay') . '</h4>',
+      'desc' => __('Configure your Billplz Sandbox Settings', 'billplz-for-smartpay'),
       'type' => 'header'
     ),
 
     array(
       'id'   => 'billplz_sandbox_secret_key',
-      'name'  => __('Sandbox Secret Key', 'fpx-payment-smartpay'),
-      'desc'  => __('Enter your sandbox secret key', 'fpx-payment-smartpay'),
+      'name'  => __('Sandbox Secret Key', 'billplz-for-smartpay'),
+      'desc'  => __('Enter your sandbox secret key', 'billplz-for-smartpay'),
       'type'  => 'text',
     ),
 
     array(
       'id'   => 'billplz_sandbox_collection_id',
-      'name'  => __('Sandbox Collection ID', 'fpx-payment-smartpay'),
-      'desc'  => __('Enter your sandbox Collection ID', 'fpx-payment-smartpay'),
+      'name'  => __('Sandbox Collection ID', 'billplz-for-smartpay'),
+      'desc'  => __('Enter your sandbox Collection ID', 'billplz-for-smartpay'),
       'type'  => 'text',
     ),
 
     array(
       'id'   => 'billplz_sandbox_xsignature_key',
-      'name'  => __('Sandbox X-Signature Key', 'fpx-payment-smartpay'),
-      'desc'  => __('Enter your Sandbox X-Signature key', 'fpx-payment-smartpay'),
+      'name'  => __('Sandbox X-Signature Key', 'billplz-for-smartpay'),
+      'desc'  => __('Enter your Sandbox X-Signature key', 'billplz-for-smartpay'),
       'type'  => 'text',
     ),
   );
@@ -185,7 +217,7 @@ function bwpsp_ajax_process_payment($paymentData)
     $product      = Product::where('id', $payment->data['product_id'])->first();
     $productTitle = strtoupper($product->title);
   }
-  
+
   $payment_price = number_format($paymentData['amount'], 2);
 
   $return_url   = add_query_arg(array(
@@ -197,21 +229,21 @@ function bwpsp_ajax_process_payment($paymentData)
 
   $args = array(
     'headers' => array(
-      'Authorization' => 'Basic ' . base64_encode($smartpay_options['billplz_secret_key']) . ':',
+      'Authorization' => 'Basic ' . bwpsp_get_billplz_secret_key() . ':',
     ),
     'body' => array(
-      'collection_id' => $smartpay_options['billplz_collection_id'],
+      'collection_id' => bwpsp_get_billplz_collection_id(),
       'email'         => $payment->customer->email,
       'name'          => $payment->customer->full_name,
       'amount'        => strval($payment_price) * 100,
       'redirect_url'  => $return_url,
       'callback_url'  => $callback_url,
-      'description'   => 'Payment for' . $productTitle,
+      'description'   => 'Payment for ' . $productTitle,
       'reference_1_label' => 'Payment ID',
       'reference_1' => $payment->id
     )
   );
-  $response    = wp_remote_post(bwpsp_billplz_url() . '/api/v3/bills', $args);
+  $response    = wp_remote_post(bwpsp_get_billplz_url() . '/api/v3/bills', $args);
 
   if (is_wp_error($response)) {
     $error_message = $response->get_error_message();
@@ -261,7 +293,7 @@ function bwpsp_process_callback($request_data)
   $params         = $request_data->get_params();
   $transaction_id = $params['id'];
 
-  $x_signature    = $smartpay_options['billplz_xsignature_key'];
+  $x_signature    = bwpsp_get_billplz_xsignature_key();
   $x_sign         = $params['x_signature'];
 
   unset($params['x_signature']);
@@ -279,11 +311,11 @@ function bwpsp_process_callback($request_data)
 
   $args = array(
     'headers' => array(
-      'Authorization' => 'Basic ' . base64_encode($smartpay_options['billplz_secret_key']) . ':',
+      'Authorization' => 'Basic ' . bwpsp_get_billplz_secret_key() . ':',
     ),
   );
 
-  $get_bill = wp_remote_get(bwpsp_billplz_url() . '/api/v3/bills/' . $transaction_id, $args);
+  $get_bill = wp_remote_get(bwpsp_get_billplz_url() . '/api/v3/bills/' . $transaction_id, $args);
   $apiBody  = json_decode(wp_remote_retrieve_body($get_bill));
   $payment_id = $apiBody->reference_1;
 
@@ -308,7 +340,7 @@ function bwpsp_process_payment_url()
     return;
   }
 
-  $x_signature = $smartpay_options['billplz_xsignature_key'];
+  $x_signature = bwpsp_get_billplz_xsignature_key();
   $url         = htmlentities($_SERVER['QUERY_STRING']);
   parse_str(html_entity_decode($url), $query);
 
