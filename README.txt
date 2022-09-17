@@ -4,9 +4,9 @@ Author URI: https://alvindcaesar.com
 Plugin URI: https://wpkartel.com/fpx-payment-for-wpsmartpay/
 Tags: e-commerce, payment-gateway, product, subscription, payment-forms
 Requires at least: 5.5
-Tested up to: 6.0.1
+Tested up to: 6.0.2
 Requires PHP: 7.0
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 License: GNU Version 2 or Any Later Version
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,6 +32,9 @@ the WordPress debug mode by setting the two constants `WP_DEBUG` and `WP_DEBUG_L
 Most of the time a white screen means a PHP error. Because PHP won't show error messages on default for security reasons, the page is white. Please turn on the WordPress Debug Mode to turn on PHP error messages (see previous answer).
 
 == Changelog ==
+
+= 1.0.4, September 17, 2022 =
+* Improve: Update compatibility to WordPress version 6.0.2.
 
 = 1.0.3, July 29, 2022 =
 * New: Billplz Sandbox setting is now available.
