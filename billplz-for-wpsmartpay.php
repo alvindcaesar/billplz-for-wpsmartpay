@@ -9,7 +9,7 @@
  * Plugin Name:       FPX Payment for WPSmartPay (Billplz)
  * Plugin URI:        https://wpkartel.com/fpx-payment-for-wpsmartpay
  * Description:       Accept payment in WPSmartPay by using Billplz.
- * Version:           1.0.4
+ * Version:           1.0.5
  * Author:            Alvind Caesar (WPKartel)
  * Author URI:        https://wpkartel.com/
  * License:           GPL-2.0+

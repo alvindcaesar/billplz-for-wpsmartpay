@@ -15,7 +15,10 @@ Payments are processed offsite at [Billplz](https://billplz.com) and the custome
 
 ### Changelog
 
-#### 1.0.4, September 17, 2022
+#### 1.0.5, January 06, 2024
+* Improve: Update compatibility to WordPress version 6.4.2.
+
+#### 1.0.5, September 17, 2022
 * Improve: Update compatibility to WordPress version 6.0.2.
 
 #### 1.0.3, July 29, 2022

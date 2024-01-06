@@ -4,9 +4,9 @@ Author URI: https://alvindcaesar.com
 Plugin URI: https://wpkartel.com/fpx-payment-for-wpsmartpay/
 Tags: e-commerce, payment-gateway, product, subscription, payment-forms
 Requires at least: 5.5
-Tested up to: 6.0.2
+Tested up to: 6.4.2
 Requires PHP: 7.0
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GNU Version 2 or Any Later Version
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
